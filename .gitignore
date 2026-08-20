@@ -2,6 +2,9 @@
 /NousUsageBar
 /dist/
 
+# Signing credentials — private keys, CSRs, and p12s must NEVER be committed
+/signing/
+
 # macOS
 .DS_Store
 
