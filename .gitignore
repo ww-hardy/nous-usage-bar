@@ -1,0 +1,12 @@
+# Build artifacts
+/NousUsageBar
+/dist/
+
+# macOS
+.DS_Store
+
+# Icon build intermediates
+assets/AppIcon.iconset/
+
+# Runtime
+*.log
