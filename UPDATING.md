@@ -14,6 +14,20 @@ cd <wherever-you-cloned-nous-usage-bar>
 That fetches the latest release tag, rebuilds the app, swaps the running
 instance, and relaunches it. Done.
 
+### Bootstrap: your checkout is older than update.sh itself
+
+`update.sh` was introduced after the first release. If your local checkout is
+on a tag that predates it (e.g. `v1.0.0`), the script isn't in your working
+tree yet. Bootstrap once onto the latest `main`, then use `update.sh` forever
+after:
+
+```bash
+git fetch --tags --prune
+git checkout main
+git pull --quiet origin main
+./update.sh
+```
+
 ---
 
 ## Why git-pull is the right update strategy here

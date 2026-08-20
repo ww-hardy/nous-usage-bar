@@ -9,6 +9,11 @@
 # Usage:  ./update.sh            (from the repo root)
 #         ./update.sh --force    (rebuild even if already on the latest tag)
 #
+# Bootstrap: if your checkout is on a tag that predates update.sh (e.g. it
+# wasn't shipped in v1.0.0), first run:
+#     git fetch --tags --prune && git checkout main && git pull origin main
+# then use this script from then on.
+#
 # Dependencies: git, xcrun/swiftc (Xcode command line tools), and the repo
 # cloned locally. No GitHub token needed — read-only fetch over HTTPS.
 set -euo pipefail
