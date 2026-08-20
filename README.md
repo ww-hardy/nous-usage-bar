@@ -1,8 +1,13 @@
 # Nous Usage Bar — macOS menu bar widget
 
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 Live Nous Portal credit balance in your menu bar. Native Swift status item,
 backend delegates to Hermes' own Nous account machinery (no credential
 handling in the widget).
+
+## License
+GPL-3.0 — see [LICENSE](LICENSE).
 
 ## What it shows
 - Menu bar: `● $129.10` — total usable credits, colored dot (green > $30, orange > $10, red ≤ $10)
