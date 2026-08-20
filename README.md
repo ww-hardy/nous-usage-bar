@@ -48,6 +48,14 @@ Produces `~/Applications/NousUsageBar.app` plus
 ```
 See [UPDATING.md](UPDATING.md) for the full strategy.
 
+## In-app updates
+The widget checks for updates **weekly** (and on launch) against the GitHub
+latest-release API. Open the menu:
+- **⬆ Update NousUsageBar — vX.Y.Z available** — runs the update (finds a local
+  repo checkout and executes `update.sh`; falls back to the Releases page)
+- **Check for Updates…** (⌘U) — manual check
+- Status row shows installed vs latest version
+
 **Re-generate the icon** (if you want a different one): replace
 `assets/appicon-source.png` with any 1024×1024 PNG and re-run `./build.sh`
 — it rebuilds the `.icns` automatically.

@@ -14,6 +14,12 @@ cd <wherever-you-cloned-nous-usage-bar>
 That fetches the latest release tag, rebuilds the app, swaps the running
 instance, and relaunches it. Done.
 
+**Or use the in-app button**: open the widget menu → **Update NousUsageBar**
+(available when a newer release exists). The widget finds a local repo
+checkout (standard locations) and runs `update.sh` for you — otherwise it
+opens the GitHub Releases page. It also checks for updates automatically
+every week and on launch.
+
 ### Bootstrap: your checkout is older than update.sh itself
 
 `update.sh` was introduced after the first release. If your local checkout is
