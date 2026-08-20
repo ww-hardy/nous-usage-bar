@@ -19,26 +19,28 @@ codesign --verify --deep --strict --verbose=2 "$APP"
 echo "    verification passed"
 
 echo "==> 2/4 Building distributable DMG..."
+VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP/Contents/Info.plist" 2>/dev/null || echo "unknown")
+DMG_PATH="$HERE/dist/signed/NousUsageBar-${VERSION}-signed.dmg"
 rm -rf "$HERE/dist/signed" && mkdir -p "$HERE/dist/signed"
 hdiutil create -volname "NousUsageBar" -srcfolder "$APP" -ov -format UDZO \
-  "$HERE/dist/signed/NousUsageBar-1.1.0-signed.dmg" >/dev/null
-echo "    DMG created"
+  "$DMG_PATH" >/dev/null
+echo "    DMG created: $DMG_PATH"
 echo "    (Note: spctl cannot assess a DMG file directly - DMGs are never"
 echo "     codesigned as a file. Gatekeeper checks the notarized APP inside,"
 echo "     so 'spctl --type execute' on the app is the real acceptance test.)"
 
 echo "==> 3/4 Notarizing (submitting to Apple)..."
-xcrun notarytool submit "$HERE/dist/signed/NousUsageBar-1.1.0-signed.dmg" \
+xcrun notarytool submit "$DMG_PATH" \
   --keychain-profile "$KEYCHAIN_PROFILE" \
   --wait \
   --output-format json 2>&1 | tail -20
 
 echo "==> 4/4 Staple the ticket..."
 xcrun stapler staple "$APP"
-xcrun stapler staple "$HERE/dist/signed/NousUsageBar-1.1.0-signed.dmg"
+xcrun stapler staple "$DMG_PATH"
 echo "    stapled"
 
 echo ""
 echo "✔ Done. Signed + notarized DMG at:"
-echo "  $HERE/dist/signed/NousUsageBar-1.1.0-signed.dmg"
+echo "  $DMG_PATH"
 echo "  (Gatekeeper-clean: users can download, double-click, run.)"

@@ -32,7 +32,18 @@ struct UsagePayload: Decodable {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var refreshTimer: Timer?
+    private var updateTimer: Timer?
     private var payload: UsagePayload?
+
+    // Update checking state.
+    private var latestVersion: String?
+    private var updateAvailable = false
+    private var updateCheckState = "idle" // idle | checking | done | error
+
+    /// The version baked into this bundle's Info.plist (e.g. "1.1.0").
+    private var localVersion: String {
+        (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "0.0.0"
+    }
 
     private var pythonPath: String {
         // Resolve the Hermes venv python robustly so the widget works on any
@@ -95,6 +106,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                             selector: #selector(refreshNow),
                                             userInfo: nil, repeats: true)
         // Also refresh when the menu opens (NSMenuDelegate below).
+
+        // Update check: once at launch (silent), then weekly.
+        checkForUpdates()
+        updateTimer = Timer.scheduledTimer(timeInterval: 7 * 24 * 3600, target: self,
+                                           selector: #selector(checkForUpdates),
+                                           userInfo: nil, repeats: true)
     }
 
     // MARK: - Fetch
@@ -175,6 +192,105 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return lines.joined(separator: "\n")
     }
 
+    // MARK: - Update checking
+
+    /// Query the GitHub latest-release API and compare against the installed version.
+    @objc func checkForUpdates() {
+        updateCheckState = "checking"
+        rebuildMenu()
+
+        guard let url = URL(string: "https://api.github.com/repos/ww-hardy/nous-usage-bar/releases/latest") else {
+            updateCheckState = "error"
+            rebuildMenu()
+            return
+        }
+        var request = URLRequest(url: url)
+        request.setValue("NousUsageBar/\(localVersion)", forHTTPHeaderField: "User-Agent")
+
+        let task = URLSession.shared.dataTask(with: request) { [weak self] data, _, _ in
+            var latest: String?
+            if let data = data,
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let tag = json["tag_name"] as? String {
+                latest = tag
+            }
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                if let latest = latest {
+                    self.latestVersion = latest
+                    self.updateAvailable = Self.compareVersions(latest, self.localVersion) > 0
+                    self.updateCheckState = "done"
+                } else {
+                    self.updateCheckState = "error"
+                }
+                self.rebuildMenu()
+            }
+        }
+        task.resume()
+    }
+
+    /// Run the pull-from-git updater (update.sh) if a checkout is found on disk,
+    /// otherwise point the user at the GitHub Releases page.
+    @objc private func performUpdate() {
+        if let repo = findRepoCheckout() {
+            runUpdateScript(in: repo)
+        } else {
+            openURL("https://github.com/ww-hardy/nous-usage-bar/releases")
+        }
+    }
+
+    /// Locate a local clone of the repo (where update.sh lives).
+    private func findRepoCheckout() -> String? {
+        let candidates = [
+            NSHomeDirectory() + "/Documents/Hermes/nous-statusbar",
+            NSHomeDirectory() + "/nous-usage-bar",
+            NSHomeDirectory() + "/Documents/nous-usage-bar",
+            NSHomeDirectory() + "/Developer/nous-usage-bar",
+            NSHomeDirectory() + "/src/nous-usage-bar",
+        ]
+        for c in candidates where FileManager.default.isExecutableFile(atPath: c + "/update.sh") {
+            return c
+        }
+        return nil
+    }
+
+    /// Kick off update.sh in the repo checkout, then exit — update.sh rebuilds,
+    /// kills the old instance, and relaunches the new build itself.
+    private func runUpdateScript(in dir: String) {
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: "/bin/bash")
+        proc.arguments = ["update.sh"]
+        proc.currentDirectoryURL = URL(fileURLWithPath: dir)
+        proc.standardOutput = FileHandle.nullDevice
+        proc.standardError = FileHandle.nullDevice
+        do {
+            try proc.run()
+        } catch {
+            openURL("https://github.com/ww-hardy/nous-usage-bar/releases")
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            NSApp.terminate(nil)
+        }
+    }
+
+    /// Compare dotted version strings ("v1.2.0" vs "1.1.0"): > 0 if a is newer.
+    private static func compareVersions(_ a: String, _ b: String) -> Int {
+        let ta = Self.components(a), tb = Self.components(b)
+        for i in 0..<max(ta.count, tb.count) {
+            let x = i < ta.count ? ta[i] : 0
+            let y = i < tb.count ? tb[i] : 0
+            if x != y { return x < y ? -1 : 1 }
+        }
+        return 0
+    }
+
+    private static func components(_ v: String) -> [Int] {
+        v.trimmingCharacters(in: CharacterSet(charactersIn: "vV"))
+            .split(separator: ".")
+            .compactMap { Int($0) }
+    }
+
     // MARK: - Menu
 
     private func rebuildMenu() {
@@ -216,6 +332,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let topup = NSMenuItem(title: "Top up…", action: #selector(openTopup), keyEquivalent: "t")
         topup.target = self
         menu.addItem(topup)
+
+        menu.addItem(.separator())
+
+        // Update section: button + status + manual check.
+        let updateTitle = updateAvailable
+            ? "⬆ Update NousUsageBar — \(latestVersion ?? "new version") available"
+            : "Update NousUsageBar"
+        let updateItem = NSMenuItem(title: updateTitle, action: #selector(performUpdate), keyEquivalent: "u")
+        updateItem.target = self
+        updateItem.isEnabled = updateAvailable
+        menu.addItem(updateItem)
+
+        let statusTitle: String
+        switch updateCheckState {
+        case "checking": statusTitle = "Checking for updates…"
+        case "error": statusTitle = "Update check failed"
+        case "done":
+            statusTitle = updateAvailable
+                ? "Installed: v\(localVersion) · Latest: \(latestVersion ?? "?")"
+                : "Up to date — v\(localVersion)"
+        default: statusTitle = "Latest: \(latestVersion ?? "unknown")"
+        }
+        let statusRow = NSMenuItem(title: statusTitle, action: nil, keyEquivalent: "")
+        statusRow.isEnabled = false
+        menu.addItem(statusRow)
+
+        let checkItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
+        checkItem.target = self
+        menu.addItem(checkItem)
 
         addRefreshFooter(menu)
 
