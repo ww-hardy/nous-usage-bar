@@ -53,14 +53,27 @@ See [UPDATING.md](UPDATING.md) for the full strategy.
 — it rebuilds the `.icns` automatically.
 
 ## Install on another Mac
-- Copy `dist/NousUsageBar-<date>.zip` (or mount the `.dmg`), drag
-  `NousUsageBar.app` to `~/Applications`, open it once.
+- Download the latest **`NousUsageBar-<version>-signed.dmg`** from the
+  [Releases page](https://github.com/ww-hardy/nous-usage-bar/releases),
+  mount it, and drag `NousUsageBar.app` to `~/Applications`.
 - **Requires** a working Hermes install (`~/.hermes/hermes-agent/venv/bin/python`)
   logged into Nous Portal (`hermes portal`). The widget shells out to Hermes'
   own account fetch — it never reads your OAuth token itself.
-- Gatekeeper note: the app is **adhoc-signed**, so first launch on a fresh Mac
-  needs right-click → Open → Open, or `xattr -dr com.apple.quarantine
-  NousUsageBar.app`. Notarization needs an Apple Developer ID (see below).
+- The app is **Developer ID signed and notarized by Apple** — it opens with no
+  Gatekeeper warning on macOS 12+. No right-click workaround needed.
+
+## Signing & notarization
+The release DMG is signed with a **Developer ID Application** certificate
+(hardened runtime, `--timestamp`) and **notarized + stapled** by Apple, so
+Gatekeeper accepts it on first open. To re-sign/notarize after a rebuild:
+```bash
+./sign.sh
+```
+This signs `~/Applications/NousUsageBar.app` with hardened runtime, builds a
+fresh DMG, submits it to Apple's notary service (credential profile
+`AC_PASSWORD`), and staples the ticket to both the app and the DMG. See
+`signing/` for the certificates and keys — **never commit that folder**
+(it's in `.gitignore`).
 
 ## Auto-start at login
 ```bash
@@ -76,12 +89,3 @@ rm -rf ~/Applications/NousUsageBar.app
 launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.gieldanowski.noususagebar.plist 2>/dev/null
 rm ~/Library/LaunchAgents/com.gieldanowski.noususagebar.plist
 ```
-
-## Distribution / notarization (optional, for wide release)
-The `.dmg` is adhoc-signed, which is fine locally but triggers a Gatekeeper
-warning on other Macs. For frictionless distribution you'd need:
-1. An Apple Developer ID certificate (paid account),
-2. `codesign --options runtime --sign "Developer ID Application: …"`,
-3. Notarize + staple via `xcrun notarytool`.
-
-Happy to wire that up if you have a Developer ID.
