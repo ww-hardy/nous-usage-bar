@@ -35,14 +35,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var payload: UsagePayload?
 
     private var pythonPath: String {
-        // The Hermes venv python (resolved from the `hermes` shim on PATH).
+        // Resolve the Hermes venv python robustly so the widget works on any
+        // machine with Hermes installed, not just this one.
+        //
+        // 1) If `hermes` is on PATH, the shim lives in the venv's bin/ dir
+        //    (…/venv/bin/hermes) — so the interpreter is its sibling `python`.
+        // 2) Fall back to the standard install location.
+        // 3) Last resort: whatever python3 is on PATH (fetch will report a
+        //    clear "hermes import failed" error rather than crash).
+        if let hermesShim = findOnPath("hermes") {
+            let venvPython = hermesShim
+                .deletingLastPathComponent()
+                .appendingPathComponent("python")
+            if FileManager.default.isExecutableFile(atPath: venvPython.path) {
+                return venvPython.path
+            }
+        }
         let candidates = [
-            "/Users/hartmuth/.hermes/hermes-agent/venv/bin/python",
+            NSHomeDirectory() + "/.hermes/hermes-agent/venv/bin/python",
+            "/usr/local/opt/hermes/bin/python",
         ]
         for c in candidates where FileManager.default.isExecutableFile(atPath: c) {
             return c
         }
         return "/usr/bin/python3"
+    }
+
+    /// Locate an executable by scanning $PATH (like `which`), or nil.
+    private func findOnPath(_ name: String) -> URL? {
+        guard let pathVar = ProcessInfo.processInfo.environment["PATH"] else {
+            return nil
+        }
+        for dir in pathVar.split(separator: ":") {
+            let candidate = URL(fileURLWithPath: String(dir))
+                .appendingPathComponent(name)
+            if FileManager.default.isExecutableFile(atPath: candidate.path) {
+                return candidate
+            }
+        }
+        return nil
     }
 
     private var fetchScriptPath: String {

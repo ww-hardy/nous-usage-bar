@@ -9,6 +9,10 @@ handling in the widget).
 ## Screenshot
 ![Nous Usage Bar menu bar widget](assets/screenshots/menu-bar.png)
 
+## Docs
+- **[ONBOARDING.md](ONBOARDING.md)** — first-run guide: how to connect your own Nous credentials (via Hermes' Nous Portal login), troubleshooting, and how the credential flow works.
+- **[UPDATING.md](UPDATING.md)** — update strategy: pull from git + rebuild (`./update.sh`), why that's the right model, and alternatives.
+
 ## License
 GPL-3.0 — see [LICENSE](LICENSE).
 
@@ -36,6 +40,13 @@ cd ~/Documents/Hermes/nous-statusbar
 ```
 Produces `~/Applications/NousUsageBar.app` plus
 `dist/NousUsageBar-<date>.dmg` and `.zip`.
+
+## Update from git
+```bash
+./update.sh            # fetch latest release tag, rebuild, relaunch
+./update.sh --force    # rebuild even if already on the latest tag
+```
+See [UPDATING.md](UPDATING.md) for the full strategy.
 
 **Re-generate the icon** (if you want a different one): replace
 `assets/appicon-source.png` with any 1024×1024 PNG and re-run `./build.sh`
