@@ -6,6 +6,9 @@ Live Nous Portal credit balance in your menu bar. Native Swift status item,
 backend delegates to Hermes' own Nous account machinery (no credential
 handling in the widget).
 
+## Screenshot
+![Nous Usage Bar menu bar widget](assets/screenshots/menu-bar.png)
+
 ## License
 GPL-3.0 — see [LICENSE](LICENSE).
 
